@@ -1,4 +1,5 @@
 from distopia.app.agent import VoronoiAgent
+from distopia.mapping._voronoi import ColliderException
 from random import randint
 import numpy as np
 from copy import deepcopy
@@ -35,7 +36,7 @@ def gencoordinates(m, n, j, k, seen=None):
 
 # TODO: need to update occupied when changing state
 class GreedyAgent(DistopiaAgent):
-    def __init__(self, x_lim=(100, 900), y_lim=(100, 900), step_size=5, metrics = []):
+    def __init__(self, x_lim=(100, 900), y_lim=(100, 900), step_size=5, metrics = [], task = []):
         self.x_min, self.x_max = x_lim
         self.y_min, self.y_max = y_lim
         self.step = step_size
@@ -50,6 +51,11 @@ class GreedyAgent(DistopiaAgent):
             for m in metrics:
                 assert m in self.evaluator.metrics
             self.set_metrics(metrics)
+        if task == []:
+            self.set_task([1 for i in range(len(self.metrics))])
+        else:
+            assert len(task) == len(self.metrics)
+            self.set_task(task)
 
 
     def set_metrics(self, metrics):
@@ -96,9 +102,11 @@ class GreedyAgent(DistopiaAgent):
         '''Get all the configs that have one block n_steps away from the current
         '''
         neighborhood = []
-        for district in self.state:
-            for block in district:
-                neighborhood += self.get_neighbors(district, block)
+        state = self.state
+        for district_id, district in state.items():
+            for block_id, block in enumerate(district):
+                neighborhood += self.get_neighbors(district_id, block_id)
+        return neighborhood
 
     def get_neighbors(self, district, block):
         '''Get all the designs that move "block" by one step.
@@ -108,8 +116,8 @@ class GreedyAgent(DistopiaAgent):
         '''
         neighbors = []
 
-        moves = [np.array((self.step, 0)), np.array(-self.step, 0),
-                 np.array(0, self.step), np.array(0, -self.step)]
+        moves = [np.array((self.step, 0)), np.array((-self.step, 0)),
+                 np.array((0, self.step)), np.array((0, -self.step))]
 
         constraints = [lambda x, y: x < self.x_max,
                        lambda x, y: x > self.x_min,
@@ -119,7 +127,7 @@ class GreedyAgent(DistopiaAgent):
         x, y = self.state[district][block]
 
         for i, move in enumerate(moves):
-            mx, my = x, y + move
+            mx, my = (x, y) + move
             if constraints[i](mx, my) and (mx, my) not in self.occupied:
                 new_neighbor = deepcopy(self.state)
                 new_neighbor[district][block] = (mx, my)
@@ -127,21 +135,33 @@ class GreedyAgent(DistopiaAgent):
 
         return neighbors
 
+    def check_legal_districts(self, districts):
+        if len(districts) == 0:
+            return False
+        # TODO: consider checking for len == 8 here as well
+        for d in districts:
+            if len(d.precincts) == 0:
+                return False
+        return True
+    
     def get_metrics(self, design):
         '''Get the vector of metrics associated with a design 
 
         returns m-length np array
         '''
         try:
-            districts = agent.get_voronoi_districts(design)
-            state_metrics, districts = agent.compute_voronoi_metrics(districts)
+            districts = self.evaluator.get_voronoi_districts(design)
+            state_metrics, districts = self.evaluator.compute_voronoi_metrics(districts)
+            if self.check_legal_districts(districts) == False:
+                return None
             metric_dict = {}
             for state_metric in state_metrics:
-                metric_name = state_metric.names
+                metric_name = state_metric.name
                 metric_dict[metric_name] = state_metric.scalar_value
             return np.array([metric_dict[metric] for metric in self.metrics])
 
-        except:
+        except ColliderException as e:
+            print(e)
             return None
 
     def get_reward(self, metrics):
@@ -165,16 +185,17 @@ class GreedyAgent(DistopiaAgent):
             best_idx = np.argmax(rewards)
             # if there's no legal states then just reset
             if rewards[best_idx] == float("-inf"):
+                # what should I do here?
                 self.reset(initial)
             if np.random.rand() > eps:
                 # mask out the legal options
-                legal_mask = np.array([1 if r > float("-inf") else 0 for r in rewards])
+                legal_mask = np.array([1 if r > float("-inf") else 0 for r in rewards], dtype=np.float32)
                 # convert to probability
                 legal_mask /= np.sum(legal_mask)
                 best_idx = np.random.choice(rewards, legal_mask)
             # TODO: need to update occupied when changing state
             self.state = neighborhood[best_idx]
-            all_design.append(self.state)
+            all_designs.append(self.state)
             all_metrics.append(metrics[best_idx])
         return all_designs, all_metrics
 
@@ -182,3 +203,4 @@ class GreedyAgent(DistopiaAgent):
 if __name__ == '__main__':
     ga = GreedyAgent()
     print(ga.reset())
+    print(ga.run(2)[1])
