@@ -11,8 +11,10 @@ class DistopiaAgent:
 
     def set_task(self):
         raise NotImplementedError
+
     def run(self):
         raise NotImplementedError
+
 
 def gencoordinates(m, n, j, k, seen=None):
     '''Generate random coordinates in range x: (m,n) y:(j,k)
@@ -36,7 +38,7 @@ def gencoordinates(m, n, j, k, seen=None):
 
 # TODO: need to update occupied when changing state
 class GreedyAgent(DistopiaAgent):
-    def __init__(self, x_lim=(100, 900), y_lim=(100, 900), step_size=5, metrics = [], task = []):
+    def __init__(self, x_lim=(100, 900), y_lim=(100, 900), step_size=5, metrics=[], task=[]):
         self.x_min, self.x_max = x_lim
         self.y_min, self.y_max = y_lim
         self.step = step_size
@@ -56,7 +58,6 @@ class GreedyAgent(DistopiaAgent):
         else:
             assert len(task) == len(self.metrics)
             self.set_task(task)
-
 
     def set_metrics(self, metrics):
         '''Define an array of metric names
@@ -95,7 +96,9 @@ class GreedyAgent(DistopiaAgent):
                     distances = np.sqrt(np.sum(np.square(other_blocks - district_centroid), axis=1))
                     closest_pt = other_blocks[np.argmin(distances)]
                     new_block = (closest_pt + district_centroid)/2
-                    self.state[i].append((new_block[0], new_block[1]))
+                    new_block_coords = (new_block[0], new_block[1])
+                    self.state[i].append(new_block_coords)
+                    self.occupied.add(new_block_coords)
             return self.state
 
     def get_neighborhood(self, n_steps):
@@ -143,7 +146,7 @@ class GreedyAgent(DistopiaAgent):
             if len(d.precincts) == 0:
                 return False
         return True
-    
+
     def get_metrics(self, design):
         '''Get the vector of metrics associated with a design 
 
