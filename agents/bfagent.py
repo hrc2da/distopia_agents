@@ -4,6 +4,15 @@ import numpy as np
 from copy import deepcopy
 
 
+class DistopiaAgent:
+    def reset(self):
+        raise NotImplementedError
+
+    def set_task(self):
+        raise NotImplementedError
+    def run(self):
+        raise NotImplementedError
+
 def gencoordinates(m, n, j, k, seen=None):
     '''Generate random coordinates in range x: (m,n) y:(j,k)
 
