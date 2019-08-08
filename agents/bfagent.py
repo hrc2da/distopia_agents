@@ -63,7 +63,7 @@ class GreedyAgent(DistopiaAgent):
     def reset(self, initial=None, n_districts=8, max_blocks_per_district=2):
         '''Initialize the state randomly.
         '''
-        self.coord_generator.clear()  # this line breaks for me, (Amrit)
+        self.occupied.clear()
         if initial is not None:
             self.state = initial
             return self.state
