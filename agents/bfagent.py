@@ -1,4 +1,4 @@
-# from distopia.app.agent import VoronoiAgent
+from distopia.app.agent import VoronoiAgent
 from random import randint
 import numpy as np
 from copy import deepcopy
@@ -33,8 +33,8 @@ class GreedyAgent:
         self.occupied = set()
         self.coord_generator = gencoordinates(self.x_min, self.x_max,
                                               self.y_min, self.y_max, self.occupied)
-        # self.evaluator = VoronoiAgent()
-        # self.evaluator.load_data()
+        self.evaluator = VoronoiAgent()
+        self.evaluator.load_data()
 
     def set_task(self, task):
         self.reward_weights = task
