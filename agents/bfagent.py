@@ -34,8 +34,8 @@ def gencoordinates(m, n, j, k, seen=None):
 
 
 # TODO: need to update occupied when changing state
-class GreedyAgent:
-    def __init__(self, x_lim=(100, 900), y_lim=(100, 900), step_size=5):
+class GreedyAgent(DistopiaAgent):
+    def __init__(self, x_lim=(100, 900), y_lim=(100, 900), step_size=5, metrics = []):
         self.x_min, self.x_max = x_lim
         self.y_min, self.y_max = y_lim
         self.step = step_size
@@ -44,6 +44,18 @@ class GreedyAgent:
                                               self.y_min, self.y_max, self.occupied)
         self.evaluator = VoronoiAgent()
         self.evaluator.load_data()
+        if metrics == []:
+            self.set_metrics(self.evaluator.metrics)
+        else:
+            for m in metrics:
+                assert m in self.evaluator.metrics
+            self.set_metrics(metrics)
+
+
+    def set_metrics(self, metrics):
+        '''Define an array of metric names
+        '''
+        self.metrics = metrics
 
     def set_task(self, task):
         self.reward_weights = task
@@ -121,7 +133,14 @@ class GreedyAgent:
         returns m-length np array
         '''
         try:
-            return self.evaluator.get_metrics()  # TODO: call the right function!
+            districts = agent.get_voronoi_districts(design)
+            state_metrics, districts = agent.compute_voronoi_metrics(districts)
+            metric_dict = {}
+            for state_metric in state_metrics:
+                metric_name = state_metric.names
+                metric_dict[metric_name] = state_metric.scalar_value
+            return np.array([metric_dict[metric] for metric in self.metrics])
+
         except:
             return None
 
