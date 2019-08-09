@@ -53,7 +53,7 @@ class GreedyAgent(DistopiaAgent):
         'population' : lambda s,d : np.std([dm.metrics['population'].scalar_value for dm in d]),
         # mean of district margin of victories (-1)
         # normalization: [0,1]
-        'pvi' : lambda s,d : s.scalar_value,
+        'pvi' : lambda s,d : s.scalar_maximum,
         # minimum compactness among districts (maximize the minimum compactness, penalize non-compactness) (+1)
         # normalization: [0,1]
         'compactness' : lambda s,d : np.min([dm.metrics['compactness'].scalar_value for dm in d]),
@@ -64,7 +64,7 @@ class GreedyAgent(DistopiaAgent):
         # normalization: [0, ]
         'race' : lambda s,d : np.std([dm.metrics['race'].scalar_value/dm.metrics['race'].scalar_maximum for dm in d]),
         # scalar value is std of counties within each district. we take a max (-1) to minimize variance within district (communities of interest)
-        'income' : lambda s,d : np.max([dm.metrics['income'].scalar_value for dm in d])
+        'income' : lambda s,d : np.max([dm.metrics['income'].scalar_value for dm in d]),
         #'education' : lambda s,d : s.scalar_std,
 
         # maximum sized district (-1) to minimize difficulty of access
@@ -322,13 +322,17 @@ class GreedyAgent(DistopiaAgent):
 
 if __name__ == '__main__':
     ga = GreedyAgent(metrics=['population','pvi','compactness','projected_votes','race','income','area'])
-    ga.set_task([-1,0,0,0,0,0,0])
+    ga.set_task([0,0,0,1,0,0,0])
     print(ga.reset())
-    designs, metrics = ga.run(100)
+    designs, metrics = ga.run(200)
     import csv
     with open('outcomes.csv', 'w+') as outfile:
         writer = csv.writer(outfile)
         for row in metrics:
             if row is None:
                 row = [None]*len(ga.metrics)
+            writer.writerow(row)
+    with open('designs.csv', 'w+') as outfile:
+        writer = csv.writer(outfile)
+        for row in designs:
             writer.writerow(row)
