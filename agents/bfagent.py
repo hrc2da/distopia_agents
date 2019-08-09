@@ -38,10 +38,31 @@ def gencoordinates(m, n, j, k, seen=None):
 
 # TODO: need to update occupied when changing state
 class GreedyAgent(DistopiaAgent):
-    def __init__(self, x_lim=(100, 900), y_lim=(100, 900), step_size=5, metrics=[], task=[]):
+    # scalar_value is mean over districts
+    # scalar_std is standard deviation between districts
+    # scalar_maximum is max over districts
+    # s is state metric object (for this metric)
+    # d is list of district objects (for all metrics)
+    metric_extractors = {
+        #'population' : lambda s,d : s.scalar_std,
+        'population' : lambda s,d : np.std([dm.metrics['population'].scalar_value for dm in d]),
+        'pvi' : lambda s,d : s.scalar_value,
+        'compactness' : lambda s,d : s.scalar_value,
+        'projected_votes' : lambda s,d : np.sum([dm.metrics['projected_votes'].scalar_value/dm.metrics['projected_votes'].scalar_maximum > 0.5 for dm in d]),
+        'race' : lambda s,d : np.mean([dm.metrics['race'].scalar_value/dm.metrics['race'].scalar_maximum for dm in d]),
+        'income' : lambda s,d : s.scalar_std,
+        'education' : lambda s,d : s.scalar_std,
+        'area' : lambda s,d: s.scalar_maximum
+    }
+
+    def __init__(self, x_lim=(100, 900), y_lim=(100, 900),
+                    step_size=5, step_min=2, step_max=50,
+                    metrics=[], task=[]):
         self.x_min, self.x_max = x_lim
         self.y_min, self.y_max = y_lim
         self.step = step_size
+        self.step_min = step_min
+        self.step_max = step_max
         self.occupied = set()
         self.coord_generator = gencoordinates(self.x_min, self.x_max,
                                               self.y_min, self.y_max, self.occupied)
@@ -59,6 +80,7 @@ class GreedyAgent(DistopiaAgent):
             assert len(task) == len(self.metrics)
             self.set_task(task)
 
+
     def set_metrics(self, metrics):
         '''Define an array of metric names
         '''
@@ -67,7 +89,7 @@ class GreedyAgent(DistopiaAgent):
     def set_task(self, task):
         self.reward_weights = task
 
-    def reset(self, initial=None, n_districts=8, max_blocks_per_district=2):
+    def reset(self, initial=None, n_districts=8, max_blocks_per_district=5):
         '''Initialize the state randomly.
         '''
         self.occupied.clear()
@@ -111,6 +133,52 @@ class GreedyAgent(DistopiaAgent):
                 neighborhood += self.get_neighbors(district_id, block_id)
         return neighborhood
 
+    def get_sampled_neighborhood(self, n_blocks, n_directions, resample=False):
+        '''Sample n_blocks * n_direction neighbors.
+        
+        take n blocks, and move each one according to m direction/angle pairs
+        ignore samples that are prima facie invalid (out of bounds or overlaps)
+        if resample is true, then sample until we have n_blocks * n_directions
+        otherwise, just try that many times.
+        '''
+        neighbors = []
+        n_districts = len(self.state)
+        for i in range(n_blocks):
+            # sample from districts, then blocks
+            # this biases blocks in districts with fewer blocks
+            # i think this is similar to how humans work however
+            district_id = np.random.randint(n_districts)
+            district = self.state[district_id]
+            block_id = np.random.randint(len(district))
+            x,y = district[block_id]
+            for j in range(n_directions):
+                mx,my = self.get_random_move(x,y)
+                valid_move = self.check_boundaries(mx,my)
+                if valid_move:
+                    neighbor = deepcopy(self.state)
+                    neighbor[district_id][block_id] = (mx, my)
+                    neighbors.append(neighbor)
+                elif resample == True:
+                    # don't use this yet, need to add a max_tries?
+                    while not valid_move: 
+                        mx,my = self.get_random_move(x,y)
+                        valid_move = self.check_boundaries(mx,my)
+        return neighbors
+
+    def get_random_move(self, x, y):
+        dist,angle = (np.random.randint(self.step_min, self.step_max),
+                        np.random.uniform(2*np.pi))
+        return (x + np.cos(angle) * dist, y + np.sin(angle) * dist)
+
+    def check_boundaries(self, x, y):
+        '''Return true if inside screen boundaries
+        '''
+        if x < self.x_min or x > self.x_max:
+            return False
+        if y < self.y_min or y > self.y_max:
+            return False
+        return True
+
     def get_neighbors(self, district, block):
         '''Get all the designs that move "block" by one step.
 
@@ -123,9 +191,9 @@ class GreedyAgent(DistopiaAgent):
                  np.array((0, self.step)), np.array((0, -self.step))]
 
         constraints = [lambda x, y: x < self.x_max,
-                       lambda x, y: x > self.x_min,
-                       lambda x, y: y < self.y_max,
-                       lambda x, y: y > self.y_min]
+                        lambda x, y: x > self.x_min,
+                        lambda x, y: y < self.y_max,
+                        lambda x, y: y > self.y_min]
 
         x, y = self.state[district][block]
 
@@ -160,9 +228,11 @@ class GreedyAgent(DistopiaAgent):
             metric_dict = {}
             for state_metric in state_metrics:
                 metric_name = state_metric.name
-                metric_dict[metric_name] = state_metric.scalar_value
-            return np.array([metric_dict[metric] for metric in self.metrics])
-
+                if metric_name in self.metrics:
+                    metric_dict[metric_name] = self.metric_extractors[metric_name](state_metric, districts)
+            metrics = np.array([metric_dict[metric] for metric in self.metrics])
+            #metrics = np.array([self.metric_extractors[metric](state_metrics, districts) for metric in self.metrics])
+            return metrics
         except ColliderException as e:
             print(e)
             return None
@@ -175,35 +245,73 @@ class GreedyAgent(DistopiaAgent):
         else:
             return np.dot(self.reward_weights, metrics)
 
-    def run(self, n_steps, initial=None, eps=0.9, eps_decay=0.9):
+    def run(self, n_steps, initial=None, eps=0.9, eps_decay=0.9, eps_min=0.1, n_tries_per_step = 5):
         '''runs for n_steps and returns traces of designs and metrics
         '''
         self.reset(initial)
         all_designs = []
         all_metrics = []
-        for i in range(n_steps):
-            neighborhood = self.get_neighborhood(1)
-            metrics = [self.get_metrics(n) for n in neighborhood]
-            rewards = [self.get_reward(m) for m in metrics]
-            best_idx = np.argmax(rewards)
+        i = 0
+        last_reward = float("-inf")
+        no_valids = 0
+        samples = 0
+        resets = 0
+        randoms = 0
+        while i < n_steps:
+            i += 1
+            print(i)
+            for j in range(n_tries_per_step):
+                samples += 1
+                neighborhood = self.get_sampled_neighborhood(4,2)
+                metrics = [self.get_metrics(n) for n in neighborhood]
+                rewards = [self.get_reward(m) for m in metrics]
+                best_idx = np.argmax(rewards)
+                if rewards[best_idx] == float("-inf"):
+                    no_valids += 1
+                if rewards[best_idx] > last_reward:
+                    break
             # if there's no legal states then just reset
-            if rewards[best_idx] == float("-inf"):
-                # what should I do here?
+            if rewards[best_idx] < last_reward or rewards[best_idx] == float("-inf"):
+                last_reward = float("-inf")
+                if rewards[best_idx] == float("-inf"):
+                    print("No valid moves! Resetting!")
+                else:
+                    print("No better move! Resetting!")
+                # what should I do here? this means there's nowhere to go that's legal
+                i -= 1 # not sure if this is right, but get the step back. will guarantee n_steps
+                # alternatives, restart and add an empty row, or just skip this step
+                resets += 1
                 self.reset(initial)
-            if np.random.rand() > eps:
+                continue
+            if np.random.rand() < eps:
+                randoms += 1
                 # mask out the legal options
                 legal_mask = np.array([1 if r > float("-inf") else 0 for r in rewards], dtype=np.float32)
                 # convert to probability
                 legal_mask /= np.sum(legal_mask)
-                best_idx = np.random.choice(rewards, legal_mask)
+                best_idx = np.random.choice(np.arange(len(rewards)), p=legal_mask)
+            if eps > eps_min:
+                eps *= eps_decay
+            if eps < eps_min:
+                eps = eps_min
+            last_reward = rewards[best_idx]
             # TODO: need to update occupied when changing state
             self.state = neighborhood[best_idx]
             all_designs.append(self.state)
             all_metrics.append(metrics[best_idx])
+        print("n_steps: {}, samples: {}, resets: {}, none_valids: {}, randoms: {}".format(n_steps, samples, resets, no_valids, randoms))
         return all_designs, all_metrics
 
 
 if __name__ == '__main__':
-    ga = GreedyAgent()
+    ga = GreedyAgent(metrics=['population','pvi','compactness','projected_votes','race','income','area'])
+    ga.set_task([-1,0,0,0,0,0,0])
     print(ga.reset())
-    print(ga.run(2)[1])
+    designs, metrics = ga.run(100)
+    import csv
+    with open('outcomes.csv', 'w+') as outfile:
+        writer = csv.writer(outfile)
+        for row in metrics:
+            if row is None:
+                row = [None]*len(ga.metrics)
+            writer.writerow(row)
