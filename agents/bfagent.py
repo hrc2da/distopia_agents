@@ -44,14 +44,31 @@ class GreedyAgent(DistopiaAgent):
     # s is state metric object (for this metric)
     # d is list of district objects (for all metrics)
     metric_extractors = {
+
+        #overall normalization plan: run one-hots in either direction to get rough bounds
+        # then z-normalize and trim on edges
         #'population' : lambda s,d : s.scalar_std,
+        # standard deviation of each district's total populations (-1)
+        # normalization: [0, single_district std] 
         'population' : lambda s,d : np.std([dm.metrics['population'].scalar_value for dm in d]),
+        # mean of district margin of victories (-1)
+        # normalization: [0,1]
         'pvi' : lambda s,d : s.scalar_value,
-        'compactness' : lambda s,d : s.scalar_value,
-        'projected_votes' : lambda s,d : np.sum([dm.metrics['projected_votes'].scalar_value/dm.metrics['projected_votes'].scalar_maximum > 0.5 for dm in d]),
-        'race' : lambda s,d : np.mean([dm.metrics['race'].scalar_value/dm.metrics['race'].scalar_maximum for dm in d]),
-        'income' : lambda s,d : s.scalar_std,
-        'education' : lambda s,d : s.scalar_std,
+        # minimum compactness among districts (maximize the minimum compactness, penalize non-compactness) (+1)
+        # normalization: [0,1]
+        'compactness' : lambda s,d : np.min([dm.metrics['compactness'].scalar_value for dm in d]),
+        # mean ratio of democrats over all voters in each district (could go either way)
+        # normalization: [0,1]
+        'projected_votes' : lambda s,d : np.mean([dm.metrics['projected_votes'].scalar_value/dm.metrics['projected_votes'].scalar_maximum for dm in d]),
+        # std of ratio of nonminority to minority over districts
+        # normalization: [0, ]
+        'race' : lambda s,d : np.std([dm.metrics['race'].scalar_value/dm.metrics['race'].scalar_maximum for dm in d]),
+        # scalar value is std of counties within each district. we take a max (-1) to minimize variance within district (communities of interest)
+        'income' : lambda s,d : np.max([dm.metrics['income'].scalar_value for dm in d])
+        #'education' : lambda s,d : s.scalar_std,
+
+        # maximum sized district (-1) to minimize difficulty of access
+        # normalization [0,size of wisconsin]
         'area' : lambda s,d: s.scalar_maximum
     }
 
