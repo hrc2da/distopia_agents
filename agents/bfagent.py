@@ -359,6 +359,7 @@ class GreedyAgent(DistopiaAgent):
         if logger is not None:
             return "n_steps: {}, samples: {}, resets: {}, none_valids: {}, randoms: {}".format(n_steps, samples, resets, no_valids, randoms), self.reward_weights
         else:
+            print("n_steps: {}, samples: {}, resets: {}, none_valids: {}, randoms: {}".format(n_steps, samples, resets, no_valids, randoms), self.reward_weights)
             return design_log,metric_log
 
 
