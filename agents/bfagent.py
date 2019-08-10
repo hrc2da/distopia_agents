@@ -295,7 +295,7 @@ class GreedyAgent(DistopiaAgent):
             metric_log = []
             mappend = metric_log.append
             design_log = []
-            dappend = design_log.apend
+            dappend = design_log.append
         while i < n_steps:
             i += 1
             count = 0
