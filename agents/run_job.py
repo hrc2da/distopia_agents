@@ -3,10 +3,11 @@ from bfagent import GreedyAgent
 
 import argparse
 import os
-import time
-import csv
+from multiprocessing import Pool, Queue
+from tqdm import tqdm
+from threading import Thread
 
-metrics = ['population','pvi','compactness','projected_votes','race','income','area']
+metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race', 'income', 'area']
 
 
 tasks = []
@@ -20,49 +21,38 @@ for i in range(len(metrics)):
     tasks.append(task_down)
 
 
+if __name__ == '__main__':
+    argparser = argparse.ArgumentParser(description="Run a Greedy Agent task")
+
+    argparser.add_argument('n_steps', type=int)
+    args = argparser.parse_args()
+
+    n_steps = args.n_steps
+    status_queue = Queue()
+
+    def progress_monitor():
+        for i in tqdm(range(len(tasks) * n_steps)):
+            status_queue.get()
+
+    def process_task(task):
+        greedy_agent = GreedyAgent(metrics=metrics)
+        greedy_agent.set_task(task)
+
+        out_dir = os.path.join(os.path.dirname(__file__), 'logs')
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+
+        task_str = ','.join(map(str, task))
+        with open(os.path.join(out_dir, task_str + '_exc_log'), 'w+') as exc_logger:
+            with open(os.path.join(out_dir, task_str + '_log'), 'w+') as logger:
+                return greedy_agent.run(n_steps, logger, exc_logger, status_queue)
 
 
-argparser = argparse.ArgumentParser(description="Run a Greedy Agent task")
+    thread = Thread(target=progress_monitor)
+    thread.start()
 
-argparser.add_argument('task', type=int)
-argparser.add_argument('n_steps', type=int)
+    with Pool(70) as pool:
+        results = pool.map(process_task, tasks)
 
-args = argparser.parse_args()
-
-task_id = args.task
-n_steps = args.n_steps
-
-
-greedy_agent = GreedyAgent(metrics=metrics)
-greedy_agent.set_task(tasks[task_id])
-designs, metrics = greedy_agent.run(n_steps)
-
-
-def task_to_str(task_arr):
-    task_str = ''
-    print(task_arr)
-    for w in task_arr:
-        if w > 0:
-            task_str += '+'
-        elif w == 0:
-            task_str += '0'
-        else:
-            task_str += '-'
-    return task_str
-
-outfile_name = task_to_str(tasks[task_id])
-
-t = str(time.time())
-out_dir = os.path.join('logs',outfile_name)
-if not os.path.exists(out_dir):
-    os.mkdir(out_dir)
-with open(os.path.join(out_dir,outfile_name+'_'+t+'_outcomes.csv'), 'w+') as outfile:
-    writer = csv.writer(outfile)
-    for row in metrics:
-        if row is None:
-            row = [None]*len(ga.metrics)
-        writer.writerow(row)
-with open(os.path.join(out_dir,outfile_name+'_'+t+'_designs.csv'), 'w+') as outfile:
-    writer = csv.writer(outfile)
-    for row in designs:
-        writer.writerow(row)
+    for res, config in results:
+        print('{}: {}'.format(','.join(map(str, config)), res))
