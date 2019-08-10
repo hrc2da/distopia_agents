@@ -244,7 +244,7 @@ class GreedyAgent(DistopiaAgent):
                 return False
         return True
 
-    def get_metrics(self, design, exc_logger):
+    def get_metrics(self, design, exc_logger=None):
         '''Get the vector of metrics associated with a design 
 
         returns m-length np array
@@ -253,7 +253,10 @@ class GreedyAgent(DistopiaAgent):
             districts = self.evaluator.get_voronoi_districts(design)
             state_metrics, districts = self.evaluator.compute_voronoi_metrics(districts)
         except ColliderException:
-            exc_logger.write(str(design) + '\n')
+            if exc_logger is not None:
+                exc_logger.write(str(design) + '\n')
+            else:
+                print("Collider Exception!")
             return None
 
         if not self.check_legal_districts(districts):
@@ -277,7 +280,7 @@ class GreedyAgent(DistopiaAgent):
         else:
             return np.dot(self.reward_weights, metrics)
 
-    def run(self, n_steps, logger, exc_logger, status, initial=None, eps=0.9, eps_decay=0.9,
+    def run(self, n_steps, logger=None, exc_logger=None, status=None, initial=None, eps=0.9, eps_decay=0.9,
             eps_min=0.1, n_tries_per_step = 5):
         '''runs for n_steps and returns traces of designs and metrics
         '''
@@ -288,6 +291,11 @@ class GreedyAgent(DistopiaAgent):
         samples = 0
         resets = 0
         randoms = 0
+        if logger is None:
+            metric_log = []
+            mappend = metric_log.append
+            design_log = []
+            dappend = design_log.apend
         while i < n_steps:
             i += 1
             count = 0
@@ -341,17 +349,24 @@ class GreedyAgent(DistopiaAgent):
             #             self.occupied.remove(block)
             self.state = neighborhood[best_idx]
             self.occupied = set(itertools.chain(*self.state.values()))
-            status.put('next')
-
-            logger.write(str([time.perf_counter(), count, list(metrics[best_idx]), self.state]) + '\n')
-        return "n_steps: {}, samples: {}, resets: {}, none_valids: {}, randoms: {}".format(n_steps, samples, resets, no_valids, randoms), self.reward_weights
+            if status is not None:
+                status.put('next')
+            if logger is not None:
+                logger.write(str([time.perf_counter(), count, list(metrics[best_idx]), self.state]) + '\n')
+            else:
+                mappend(metrics[best_idx])
+                dappend(self.state)
+        if logger is not None:
+            return "n_steps: {}, samples: {}, resets: {}, none_valids: {}, randoms: {}".format(n_steps, samples, resets, no_valids, randoms), self.reward_weights
+        else:
+            return design_log,metric_log
 
 
 if __name__ == '__main__':
     ga = GreedyAgent(metrics=['population','pvi','compactness','projected_votes','race','income','area'])
     ga.set_task([0,0,0,1,0,0,0])
     print(ga.reset())
-    designs, metrics = ga.run(200,None,None,None)
+    designs, metrics = ga.run(2)
     # import csv
     # with open('outcomes.csv', 'w+') as outfile:
     #     writer = csv.writer(outfile)
