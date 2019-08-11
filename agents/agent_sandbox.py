@@ -97,6 +97,7 @@ def plot_test(task, obs_metrics, beliefs):
 
 
 metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race', 'income', 'area']
+metric_names = ['population', 'pvi', 'compactness', 'projected_votes', 'race', 'income', 'area']
 five_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
 six_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
 seven_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1],
