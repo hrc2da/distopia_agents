@@ -1,5 +1,5 @@
 import numpy as np
-from pandas import *
+#from pandas import *
 a = np.matrix([[5,3,0,0,-4,-1],
               [3,1,0,0,-2,-1],
               [4,4,1,1,-2,-4],
