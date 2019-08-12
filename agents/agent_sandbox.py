@@ -6,11 +6,21 @@ import sys
 import pickle as pkl
 from scipy.stats import multivariate_normal
 import matplotlib.pyplot as plt
+import time
+from multiprocessing import Pool, Queue, Manager
+from threading import Thread
+from tqdm import tqdm
+
 
 emissions_file = 'resources/conditional_one_hots.pkl'
 
+deltas_emissions_file = 'resources/conditional_one_hots_deltas.pkl'
+
 with open(emissions_file, 'rb') as em_file:
     emissions_probs = pkl.load(em_file)
+
+with open(deltas_emissions_file, 'rb') as dem_file:
+	deltas_emissions_probs = pkl.load(dem_file)
 
 normalization_file = 'resources/normalization.pkl'
 
@@ -20,14 +30,21 @@ with open(normalization_file, 'rb') as z_file:
     stds = np.array(stds)
 
 
-def transition_fn(x, y, z):
+def transition_fn(initial_state, resulting_state, action):
     return 1/14
 
+def deltas_transition_fn(initial_state, resulting_state, action):
+    means, cov = deltas_emissions_probs[str(list(resulting_state))]
+    return multivariate_normal.pdf(action, mean=means, cov=cov)
 
-def observation_fn(observation, task):
+def observation_fn(observation, task, dx = 0.01):
     means, cov = emissions_probs[str(list(task))]
     return multivariate_normal.pdf(observation, mean=means, cov=cov)
+    
 
+def deltas_observation_fn(observation, task):
+	means, cov = deltas_emissions_probs[str(list(task))]
+	return multivariate_normal.pdf(observation, mean=means, cov=cov)
 
 def standardize(metric_arr):
     return (metric_arr - means) / stds
@@ -59,6 +76,8 @@ def stringify_task(task):
     s = s[:-1] + "]"
     return s
 
+	
+	
 
 def plot_test(task, obs_metrics, beliefs):
         # plot task posteriors
@@ -75,7 +94,7 @@ def plot_test(task, obs_metrics, beliefs):
     # plot metrics from run
 
     obs = {k: [] for k in metric_names}
-    for metric_step in all_metrics:
+    for metric_step in obs_metrics:
         s_metric_step = standardize(metric_step)
         for i in range(len(metric_step)):
             obs[metric_names[i]].append(s_metric_step[i])
@@ -93,7 +112,14 @@ def plot_test(task, obs_metrics, beliefs):
         ax3.plot(data, label=key)
     ax3.legend()
 
-    plt.show()
+    plt.savefig(task+"_"+str(time.time())+".png")
+
+def did_it_get_it(task, beliefs, threshold = 0.7):
+    for b in beliefs:
+        relevant_belief = b[task]
+        if relevant_belief >= threshold:
+            return True
+    return False
 
 
 metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race', 'income', 'area']
@@ -122,7 +148,11 @@ with open('task.txt', 'r') as f:
 gagent = GreedyAgent()
 gagent.set_metrics(metrics)
 
-for task_trajectory in all_tasks:
+
+
+#correct = 0
+def process_task(task_trajectory,results_queue):
+#for task_trajectory in all_tasks:
     task_path = ""
     all_designs = []
     all_metrics = []
@@ -132,17 +162,45 @@ for task_trajectory in all_tasks:
         designs, metrics = gagent.run(steps)
         all_designs += designs
         all_metrics += metrics
-
-    bfilter = BayesFilter(tasks, transition_fn, observation_fn)
+    bfilter = BayesFilter(tasks, deltas_transition_fn, deltas_observation_fn)
     beliefs = []
     beliefsappend = beliefs.append
     with open('results/'+task_path[:-1]+'_belief_file.txt', 'w') as f:
-        for metric in all_metrics:
-            action = None
-            #b_star = bfilter.prediction_step(action)
-            b = bfilter.observation_step(standardize(metric))
+        last_metric = standardize(all_metrics[0])
+        for metric in all_metrics[1:]:
+            #action = None
+            cur_metric = standardize(metric)
+            delta = cur_metric - last_metric
+            last_metric = cur_metric
+            #b_star = bfilter.prediction_step(delta)
+            #b = bfilter.observation_step(cur_metric)
+            b = bfilter.observation_step(delta)
+
             #f.write(str("Pred: " + str(b_star)))
             f.write(str("Obs: " + str(b)))
             f.write('\n')
             beliefsappend(b)
+    correct = did_it_get_it(str(np.array(task,dtype=float)),beliefs)
+    results_queue.put(correct)
     plot_test(task, all_metrics, beliefs)
+    print("Correct: {}".format(correct))
+
+
+m = Manager()
+results_queue = m.Queue()
+def progress_monitor():
+    num_correct = 0
+    for i in tqdm(range(len(all_tasks))):
+        correct = results_queue.get()
+        print(correct)
+        num_correct += correct
+    print("************************************")
+    print("Total Correct: {}".format(num_correct))
+    print("************************************")
+thread = Thread(target=progress_monitor)
+thread.start()
+
+queued_tasks = [(task, results_queue) for task in all_tasks]
+
+with Pool(8) as pool:
+    results = pool.starmap(process_task, (queued_tasks))
