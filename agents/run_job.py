@@ -8,7 +8,7 @@ from tqdm import tqdm
 from threading import Thread
 import itertools
 
-metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race', 'income', 'area']
+metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race']
 
 
 # tasks = []

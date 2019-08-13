@@ -302,6 +302,8 @@ class GreedyAgent(DistopiaAgent):
             for j in range(n_tries_per_step):
                 samples += 1
                 neighborhood = self.get_sampled_neighborhood(4,2)
+                if len(neighborhood) < 1:
+                    continue
                 metrics = [self.get_metrics(n, exc_logger) for n in neighborhood]
                 count += len(metrics)
                 rewards = [self.get_reward(m) for m in metrics]
