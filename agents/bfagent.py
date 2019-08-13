@@ -56,7 +56,7 @@ class GreedyAgent(DistopiaAgent):
     }
 
     def __init__(self, x_lim=(100, 900), y_lim=(100, 900),
-                    step_size=5, step_min=2, step_max=50,
+                    step_size=5, step_min=50, step_max=100,
                     metrics=[], task=[]):
         self.x_min, self.x_max = x_lim
         self.y_min, self.y_max = y_lim
@@ -280,8 +280,8 @@ class GreedyAgent(DistopiaAgent):
         else:
             return np.dot(self.reward_weights, metrics)
 
-    def run(self, n_steps, logger=None, exc_logger=None, status=None, initial=None, eps=0.9, eps_decay=0.9,
-            eps_min=0.1, n_tries_per_step = 5):
+    def run(self, n_steps, logger=None, exc_logger=None, status=None, initial=None, eps=0.8, eps_decay=0.9,
+            eps_min=0.1, n_tries_per_step = 10):
         '''runs for n_steps and returns traces of designs and metrics
         '''
         self.reset(initial)
@@ -313,7 +313,7 @@ class GreedyAgent(DistopiaAgent):
                     break
 
             # if there's no legal states then just reset
-            if rewards[best_idx] < last_reward or rewards[best_idx] == float("-inf"):
+            if rewards[best_idx] <= last_reward or rewards[best_idx] == float("-inf"):
                 last_reward = float("-inf")
                 # if rewards[best_idx] == float("-inf"):
                 #     print("No valid moves! Resetting!")

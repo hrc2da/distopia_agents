@@ -6,19 +6,22 @@ import os
 from multiprocessing import Pool, Queue
 from tqdm import tqdm
 from threading import Thread
+import itertools
 
 metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race', 'income', 'area']
 
 
-tasks = []
+# tasks = []
 
-for i in range(len(metrics)):
-    task_up = np.zeros(len(metrics))
-    task_up[i] = 1
-    task_down = np.zeros(len(metrics))
-    task_down[i] = -1
-    tasks.append(task_up)
-    tasks.append(task_down)
+# for i in range(len(metrics)):
+#     task_up = np.zeros(len(metrics))
+#     task_up[i] = 1
+#     task_down = np.zeros(len(metrics))
+#     task_down[i] = -1
+#     tasks.append(task_up)
+#     tasks.append(task_down)
+
+tasks = list(map(np.array,itertools.product([-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.])))
 
 
 if __name__ == '__main__':
@@ -51,7 +54,7 @@ if __name__ == '__main__':
     thread = Thread(target=progress_monitor)
     thread.start()
 
-    with Pool(70) as pool:
+    with Pool(96) as pool:
         results = pool.map(process_task, tasks)
 
     for res, config in results:
