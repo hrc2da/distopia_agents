@@ -85,6 +85,8 @@ with open('resources/combined_normalization.pkl', 'wb+') as outfile:
 	pkl.dump((pop_mean,pop_std),outfile)
 with open('resources/combined_raw_data.pkl', 'wb+') as outfile:
 	pkl.dump(combined,outfile)
+with open('resources/raw_data.pkl', 'wb+') as outfile:
+	pkl.dump({t:c[:,:5] for t,c in combined.items()},outfile)
 metric_emissions = {str(eval(task)[:5]): (np.mean(c[:,:5],0),np.cov(c[:,:5].T)) for task,c in standardized_data.items()}
 with open('resources/stripped_emissions.pkl', 'wb+') as outfile:
 	pkl.dump(metric_emissions,outfile)
