@@ -298,6 +298,9 @@ class GreedyAgent(DistopiaAgent):
             dappend = design_log.append
         while i < n_steps:
             i += 1
+            if i % 50 == 0:
+                last_reward = float("-inf")
+                self.reset(initial)
             count = 0
             for j in range(n_tries_per_step):
                 samples += 1
@@ -315,7 +318,8 @@ class GreedyAgent(DistopiaAgent):
                     break
 
             # if there's no legal states then just reset
-            if rewards[best_idx] <= last_reward or rewards[best_idx] == float("-inf"):
+            #if rewards[best_idx] <= last_reward or rewards[best_idx] == float("-inf"):
+            if rewards[best_idx] == float("-inf"):
                 last_reward = float("-inf")
                 # if rewards[best_idx] == float("-inf"):
                 #     print("No valid moves! Resetting!")

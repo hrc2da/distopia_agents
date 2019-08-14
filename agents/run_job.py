@@ -11,17 +11,18 @@ import itertools
 metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race']
 
 
-# tasks = []
+tasks = []
 
-# for i in range(len(metrics)):
-#     task_up = np.zeros(len(metrics))
-#     task_up[i] = 1
-#     task_down = np.zeros(len(metrics))
-#     task_down[i] = -1
-#     tasks.append(task_up)
-#     tasks.append(task_down)
+for i in range(len(metrics)):
+    task_up = np.zeros(len(metrics))
+    task_up[i] = 1
+    task_down = np.zeros(len(metrics))
+    task_down[i] = -1
+    tasks.append(task_up)
+    tasks.append(task_down)
 
-tasks = list(map(np.array,itertools.product([-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.])))
+task = tasks * 9
+#tasks = list(map(np.array,itertools.product([-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.])))
 
 
 if __name__ == '__main__':
@@ -37,7 +38,7 @@ if __name__ == '__main__':
         for i in tqdm(range(len(tasks) * n_steps)):
             status_queue.get()
 
-    def process_task(task):
+    def process_task(i, task):
         greedy_agent = GreedyAgent(metrics=metrics)
         greedy_agent.set_task(task)
 
@@ -46,8 +47,8 @@ if __name__ == '__main__':
             os.mkdir(out_dir)
 
         task_str = ','.join(map(str, task))
-        with open(os.path.join(out_dir, task_str + '_exc_log'), 'w+') as exc_logger:
-            with open(os.path.join(out_dir, task_str + '_log'), 'w+') as logger:
+        with open(os.path.join(out_dir, task_str + '_exc_log_'+str(i)), 'w+') as exc_logger:
+            with open(os.path.join(out_dir, task_str + '_log_'+str(i)), 'w+') as logger:
                 return greedy_agent.run(n_steps, logger, exc_logger, status_queue)
 
 
@@ -55,7 +56,7 @@ if __name__ == '__main__':
     thread.start()
 
     with Pool(96) as pool:
-        results = pool.map(process_task, tasks)
+        results = pool.starmap(process_task, list(enumerate(tasks)))
 
     for res, config in results:
         print('{}: {}'.format(','.join(map(str, config)), res))
