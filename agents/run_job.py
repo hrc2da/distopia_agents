@@ -21,7 +21,8 @@ for i in range(len(metrics)):
     tasks.append(task_up)
     tasks.append(task_down)
 
-task = tasks * 9
+tasks = tasks * 9
+
 #tasks = list(map(np.array,itertools.product([-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.])))
 
 
