@@ -10,11 +10,25 @@ import time
 from multiprocessing import Pool, Queue, Manager
 from threading import Thread
 from tqdm import tqdm
+from sklearn.neighbors.kde import KernelDensity
 
 
 emissions_file = 'resources/conditional_one_hots.pkl'
 
 deltas_emissions_file = 'resources/conditional_one_hots_deltas.pkl'
+
+data_dict_file = 'resources/raw_data.pkl'
+
+with open(data_dict_file, 'rb') as data_file:
+    training_data = pkl.load(data_file)
+
+kde_dict = {}
+for task in data_file.keys():
+    task_data = training_data[str(task)]
+    task_kde = KernelDensity(kernel = 'gaussian', bandwidth=0.2).fit(task_data)
+    task_obs_fun = lambda x : np.exp(task_kde.score(x))
+    kde_dict[str(x)] = task_obs_fun
+    
 
 with open(emissions_file, 'rb') as em_file:
     emissions_probs = pkl.load(em_file)
@@ -37,9 +51,18 @@ def deltas_transition_fn(initial_state, resulting_state, action):
     means, cov = deltas_emissions_probs[str(list(resulting_state))]
     return multivariate_normal.pdf(action, mean=means, cov=cov)
 
+# def observation_fn(observation, task, dx = 0.01):
+#     means, cov = emissions_probs[str(list(task))]
+#     return multivariate_normal.pdf(observation, mean=means, cov=cov)
+
+'''
+Kernel Density Estimation Observation FN
+'''
 def observation_fn(observation, task, dx = 0.01):
-    means, cov = emissions_probs[str(list(task))]
-    return multivariate_normal.pdf(observation, mean=means, cov=cov)
+    return kde_dict[str(task)]
+
+
+
     
 
 def deltas_observation_fn(observation, task):
