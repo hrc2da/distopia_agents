@@ -82,15 +82,15 @@ def deltas_transition_fn(initial_state, resulting_state, action):
 	means, cov = deltas_emissions_probs[str(list(resulting_state))]
 	return multivariate_normal.pdf(action, mean=means, cov=cov)
 
-# def observation_fn(observation, task, dx = 0.01):
-#     means, cov = emissions_probs[str(list(task))]
-#     return multivariate_normal.pdf(observation, mean=means, cov=cov)
+def observation_fn(observation, task, dx = 0.01):
+    means, cov = emissions_probs[str(list(task))]
+    return multivariate_normal.pdf(observation, mean=means, cov=cov)
 
 '''
 Kernel Density Estimation Observation FN
 '''
-def observation_fn(observation, task, dx = 0.01):
-    return kde_dict[str(task)]
+# def observation_fn(observation, task, dx = 0.01):
+#     return kde_dict[str(task)]
 
 
 
