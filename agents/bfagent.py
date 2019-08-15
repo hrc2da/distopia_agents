@@ -57,12 +57,14 @@ class GreedyAgent(DistopiaAgent):
 
     def __init__(self, x_lim=(100, 900), y_lim=(100, 900),
                     step_size=5, step_min=50, step_max=100,
-                    metrics=[], task=[]):
+                    metrics=[], task=[],pop_mean=None,pop_std=None):
         self.x_min, self.x_max = x_lim
         self.y_min, self.y_max = y_lim
         self.step = step_size
         self.step_min = step_min
         self.step_max = step_max
+        self.pop_mean = pop_mean
+        self.pop_std = pop_std
         self.occupied = set()
         self.coord_generator = self.gencoordinates(self.x_min, self.x_max, self.y_min, self.y_max)
         self.evaluator = VoronoiAgent()
@@ -278,7 +280,15 @@ class GreedyAgent(DistopiaAgent):
         if metrics is None:
             return float("-inf")
         else:
-            return np.dot(self.reward_weights, metrics)
+            return np.dot(self.reward_weights, self.standardize_metrics(metrics))
+
+    def standardize_metrics(self, metrics):
+        '''Standardizes the metrics if standardization stats have been provided.
+        '''
+        if self.pop_mean is None or self.pop_std is None:
+            return metrics
+        else:
+            return (metrics - self.pop_mean)/self.pop_std
 
     def run(self, n_steps, logger=None, exc_logger=None, status=None, initial=None, eps=0.8, eps_decay=0.9,
             eps_min=0.1, n_tries_per_step = 10):
