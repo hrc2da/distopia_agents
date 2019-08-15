@@ -29,12 +29,13 @@ with open(data_dict_file, 'rb') as data_file:
     training_data = pkl.load(data_file)
 
 kde_dict = {}
-for task in data_file.keys():
-    task_data = training_data[str(task)]
-    task_kde = KernelDensity(kernel = 'gaussian', bandwidth=0.2).fit(task_data)
-    task_obs_fun = lambda x : np.exp(task_kde.score(x))
-    kde_dict[str(x)] = task_obs_fun
-    
+for task in training_data.keys():
+	task_str = str(np.array(eval(task)))
+	task_data = training_data[str(task)]
+	task_kde = KernelDensity(kernel = 'gaussian', bandwidth=0.2).fit(task_data)
+	task_obs_fun = lambda x : np.exp(task_kde.score(x))
+	kde_dict[task_str] = task_obs_fun
+import pdb; pdb.set_trace()    
 
 with open(emissions_file, 'rb') as em_file:
 	emissions_probs = pkl.load(em_file)
