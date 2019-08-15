@@ -11,7 +11,7 @@ from multiprocessing import Pool, Queue, Manager
 from threading import Thread
 from tqdm import tqdm
 from sklearn.neighbors.kde import KernelDensity
-
+import json
 
 raw_deltas_file = 'resources/stripped_raw_deltas_not_standardized.pkl'
 
@@ -35,7 +35,7 @@ for task in training_data.keys():
 	task_kde = KernelDensity(kernel = 'gaussian', bandwidth=0.2).fit(task_data)
 	task_obs_fun = lambda x : np.exp(task_kde.score(x))
 	kde_dict[task_str] = task_obs_fun
-import pdb; pdb.set_trace()    
+
 
 with open(emissions_file, 'rb') as em_file:
 	emissions_probs = pkl.load(em_file)
@@ -245,7 +245,7 @@ def process_task(task_trajectory,results_queue):
 	bfilter = BayesFilter(tasks, deltas_transition_fn, observation_fn)
 	beliefs = []
 	beliefsappend = beliefs.append
-	with open('results/'+task_path[:-1]+'_belief_file.txt', 'w') as f:
+	with open('results/'+task_path[:-1]+'_belief_file_'+str(time.time())+'.txt', 'w') as f:
 		last_metric = all_metrics[0] #standardize(all_metrics[0])
 		for metric in all_metrics[1:]:
 			#action = None
@@ -263,7 +263,7 @@ def process_task(task_trajectory,results_queue):
 			beliefsappend(b)
 	correct = did_it_get_it(str(np.array(task,dtype=float)),beliefs)
 	if results_queue is not None:
-		results_queue.put(correct)
+		results_queue.put({'correct': correct, 'task':task.tolist(),'metrics':np.array(metrics).tolist(),'beliefs':beliefs})
 	plot_test(task, all_metrics, beliefs)
 	print("Correct: {}".format(correct))
 
@@ -272,10 +272,12 @@ m = Manager()
 results_queue = m.Queue()
 def progress_monitor():
 	num_correct = 0
-	for i in tqdm(range(len(all_tasks))):
-		correct = results_queue.get()
-		print(correct)
-		num_correct += correct
+	with open('results/results_file_{}'.format(time.time()), 'w+') as results_file:
+		for i in tqdm(range(len(all_tasks))):
+			result = results_queue.get()
+			#print(result)
+			results_file.write(json.dumps(result)+'\n')
+			num_correct += result['correct']
 	print("************************************")
 	print("Total Correct: {}".format(num_correct))
 	print("************************************")
