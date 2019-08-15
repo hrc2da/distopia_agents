@@ -90,7 +90,7 @@ def deltas_transition_fn(initial_state, resulting_state, action):
 Kernel Density Estimation Observation FN
 '''
 def observation_fn(observation, task, dx = 0.01):
-    return kde_dict[str(task)]
+    return kde_dict[str(task)](observation.reshape(1,5))
 
 
 
