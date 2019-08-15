@@ -83,7 +83,7 @@ for task in training_data.keys():
 	task_data = metric_standardize(task_data)
 	task_kde = KernelDensity(kernel = 'gaussian', bandwidth=0.2).fit(task_data)
 	task_obs_fun = lambda x : np.exp(task_kde.score(x))
-	kde_dict[task_str] = task_obs_fun
+	kde_dict[task_str] = task_kde #task_obs_fun
 
 
 def transition_fn(initial_state, resulting_state, action):
@@ -101,7 +101,7 @@ def deltas_transition_fn(initial_state, resulting_state, action):
 Kernel Density Estimation Observation FN
 '''
 def observation_fn(observation, task, dx = 0.01):
-    return kde_dict[str(task)](observation.reshape(1,5))
+    return np.exp(kde_dict[str(task)].score(observation.reshape(1,5))) #(observation.reshape(1,5))
 
 
 
