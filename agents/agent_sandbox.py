@@ -27,16 +27,6 @@ data_dict_file = 'resources/raw_data.pkl'
 
 with open(data_dict_file, 'rb') as data_file:
     training_data = pkl.load(data_file)
-
-kde_dict = {}
-for task in training_data.keys():
-	task_str = str(np.array(eval(task)))
-	task_data = training_data[str(task)]
-	task_kde = KernelDensity(kernel = 'gaussian', bandwidth=0.2).fit(task_data)
-	task_obs_fun = lambda x : np.exp(task_kde.score(x))
-	kde_dict[task_str] = task_obs_fun
-import pdb; pdb.set_trace()    
-
 with open(emissions_file, 'rb') as em_file:
 	emissions_probs = pkl.load(em_file)
 
@@ -75,6 +65,27 @@ with open(combined_normalization_file, 'rb') as z_file:
 	combined_means = np.array(cmeans)
 	combined_stds = np.array(cstds)
 
+
+def metric_standardize(metric_arr):
+	return (metric_arr - metric_means) / metric_stds
+
+def delta_standardize(metric_arr):
+	return (metric_arr - delta_means) / delta_stds
+
+def combined_standardize(combined_arr):
+	return (combined_arr - combined_means) / combined_stds
+
+
+kde_dict = {}
+for task in training_data.keys():
+	task_str = str(np.array(eval(task)))
+	task_data = training_data[str(task)]
+	task_data = metric_standardize(task_data)
+	task_kde = KernelDensity(kernel = 'gaussian', bandwidth=0.2).fit(task_data)
+	task_obs_fun = lambda x : np.exp(task_kde.score(x))
+	kde_dict[task_str] = task_obs_fun
+
+
 def transition_fn(initial_state, resulting_state, action):
 	return 1/14
 
@@ -112,16 +123,6 @@ def construct_observation(observation, delta):
 	Takes raw values, standardizes, and concats
 	'''
 	return np.concat([metric_standardize(observation),metric_standardize(delta)])
-
-
-def metric_standardize(metric_arr):
-	return (metric_arr - metric_means) / metric_stds
-
-def delta_standardize(metric_arr):
-	return (metric_arr - delta_means) / delta_stds
-
-def combined_standardize(combined_arr):
-	return (combined_arr - combined_means) / combined_stds
 
 def parse_task(task_desc):
 	tasks = []
