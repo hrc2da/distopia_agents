@@ -1,3 +1,7 @@
+data_insight/data/logs/graphs/
+*.csv
+*.png
+*.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

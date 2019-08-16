@@ -23,7 +23,7 @@ combined_emissions_file = 'resources/combined_emissions.pkl'
 deltas_emissions_file = 'resources/conditional_one_hots_deltas_standardized_wrt_observations.pkl'
 
 
-data_dict_file = 'resources/raw_data.pkl'
+data_dict_file = 'resources/243_raw_data.pkl'
 
 with open(data_dict_file, 'rb') as data_file:
     training_data = pkl.load(data_file)
@@ -46,7 +46,7 @@ with open(combined_emissions_file, 'rb') as dem_file:
 	
 
 normalization_file = 'resources/normalization.pkl'
-normalization_file = 'resources/stripped_normalization.pkl'
+normalization_file = 'resources/243_stripped_normalization.pkl'
 with open(normalization_file, 'rb') as z_file:
 	means, stds = pkl.load(z_file)
 	metric_means = np.array(means)
@@ -59,7 +59,7 @@ with open(deltas_normalization_file, 'rb') as z_file:
 	delta_means = np.array(dmeans)
 	delta_stds = np.array(dstds)
 
-combined_normalization_file = 'resources/combined_normalization.pkl'
+combined_normalization_file = 'resources/243_combined_normalization.pkl'
 
 with open(combined_normalization_file, 'rb') as z_file:
 	cmeans, cstds = pkl.load(z_file)
@@ -219,7 +219,7 @@ metric_names = ['population', 'pvi', 'compactness', 'projected_votes', 'race']#,
 #									  [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
 tasks = list(map(np.array,itertools.product([-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.])))
 # tasks = []
-
+task_strings = {str(task): task for task in tasks}
 # for i in range(len(metric_names)):
 # 	task_up = np.zeros(len(metric_names))
 # 	task_up[i] = 1
@@ -251,7 +251,7 @@ def process_task(task_trajectory,results_queue):
 		designs, metrics = gagent.run(steps)
 		all_designs += designs
 		all_metrics += metrics
-	bfilter = BayesFilter(tasks, transition_fn, observation_fn)
+	bfilter = BayesFilter(list(task_strings.keys()), transition_fn, observation_fn)
 	beliefs = []
 	beliefsappend = beliefs.append
 	with open('results/'+task_path[:-1]+'_belief_file_'+str(time.time())+'.txt', 'w') as f:

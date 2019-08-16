@@ -55,14 +55,14 @@ class BayesFilter:
     states = self.states
     belief_0 = self.belief
     for x in states:
-      new_belief[str(x)] = 0
+      new_belief[x] = 0
       # for each possible prior state, x0 in the space (including itself)
       for x0 in states:
-        bel_x0 = belief_0[str(x0)]
+        bel_x0 = belief_0[x0]
         # calculate the probability that I end up in this state, x
         p = self.transition_fn(x0,x,action)
         # weight it by my belief that I was in x0 to begin with
-        new_belief[str(x)] += p*bel_x0
+        new_belief[x] += p*bel_x0
     
     self.belief = new_belief
     return self.belief
@@ -82,11 +82,11 @@ class BayesFilter:
     belief = self.belief
     normalizing_factor = 0
     for x in states:
-      new_belief[str(x)] = self.observation_fn(observation,x) * belief[str(x)]
-      normalizing_factor += new_belief[str(x)]
+      new_belief[x] = self.observation_fn(observation,x) * belief[x]
+      normalizing_factor += new_belief[x]
     
     for b in new_belief:
-      new_belief[str(b)] /= normalizing_factor
+      new_belief[b] /= normalizing_factor
       
     self.belief = new_belief
     return self.belief   
