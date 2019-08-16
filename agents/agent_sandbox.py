@@ -193,7 +193,9 @@ def plot_test(task, obs_metrics, beliefs):
 	fill = ['full','none']
 	linestyles = ['-','--']
 	for i, (key, data) in enumerate(separated_b.items()):
-		ax3.plot(data, label=key, color = colors[i//2],linestyle=linestyles[i%2])
+		if np.max(data) < 0.1:
+			key = str() #don't add zeroish curves to the legend
+		ax3.plot(data, label=key, color = colors[i//2%len(colors)],linestyle=linestyles[i%2])
 		
 	ax3.legend(loc="upper left", fontsize='small', bbox_to_anchor=(1,1))
 	ax3.set_title("Belief Trace")
@@ -211,20 +213,20 @@ def did_it_get_it(task, beliefs, threshold = 0.7):
 
 metrics = ['population', 'pvi', 'compactness', 'projected_votes', 'race']#, 'income', 'area']
 metric_names = ['population', 'pvi', 'compactness', 'projected_votes', 'race']#, 'income', 'area']
-five_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
-six_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
-seven_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1],
-									  [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
+#five_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
+#six_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
+#seven_states = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1],
+#									  [-1, 0, 1], [-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
+tasks = list(map(np.array,itertools.product([-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.], [-1., 0., 1.])))
+# tasks = []
 
-tasks = []
-
-for i in range(len(metric_names)):
-	task_up = np.zeros(len(metric_names))
-	task_up[i] = 1
-	task_down = np.zeros(len(metric_names))
-	task_down[i] = -1
-	tasks.append(task_up)
-	tasks.append(task_down)
+# for i in range(len(metric_names)):
+# 	task_up = np.zeros(len(metric_names))
+# 	task_up[i] = 1
+# 	task_down = np.zeros(len(metric_names))
+# 	task_down[i] = -1
+# 	tasks.append(task_up)
+# 	tasks.append(task_down)
 
 all_tasks = []
 with open('task.txt', 'r') as f:
@@ -249,7 +251,7 @@ def process_task(task_trajectory,results_queue):
 		designs, metrics = gagent.run(steps)
 		all_designs += designs
 		all_metrics += metrics
-	bfilter = BayesFilter(tasks, deltas_transition_fn, observation_fn)
+	bfilter = BayesFilter(tasks, transition_fn, observation_fn)
 	beliefs = []
 	beliefsappend = beliefs.append
 	with open('results/'+task_path[:-1]+'_belief_file_'+str(time.time())+'.txt', 'w') as f:
