@@ -13,14 +13,14 @@ from tqdm import tqdm
 from sklearn.neighbors.kde import KernelDensity
 import json
 
-raw_deltas_file = 'resources/stripped_raw_deltas_not_standardized.pkl'
+# raw_deltas_file = 'resources/stripped_raw_deltas_not_standardized.pkl'
 
-emissions_file = 'resources/conditional_one_hots.pkl'
-emissions_file = 'resources/stripped_emissions.pkl'
-combined_emissions_file = 'resources/combined_emissions.pkl'
+# emissions_file = 'resources/conditional_one_hots.pkl'
+emissions_file = 'resources/243_stripped_emissions.pkl'
+# combined_emissions_file = 'resources/combined_emissions.pkl'
 
 #deltas_emissions_file = 'resources/conditional_one_hots_deltas.pkl'
-deltas_emissions_file = 'resources/conditional_one_hots_deltas_standardized_wrt_observations.pkl'
+# deltas_emissions_file = 'resources/conditional_one_hots_deltas_standardized_wrt_observations.pkl'
 
 
 data_dict_file = 'resources/243_raw_data.pkl'
@@ -31,11 +31,11 @@ with open(data_dict_file, 'rb') as data_file:
 with open(emissions_file, 'rb') as em_file:
 	emissions_probs = pkl.load(em_file)
 
-with open(deltas_emissions_file, 'rb') as dem_file:
-	deltas_emissions_probs = pkl.load(dem_file)
+# with open(deltas_emissions_file, 'rb') as dem_file:
+# 	deltas_emissions_probs = pkl.load(dem_file)
 
-with open(combined_emissions_file, 'rb') as dem_file:
-	combined_emissions_probs = pkl.load(dem_file)
+# with open(combined_emissions_file, 'rb') as dem_file:
+# 	combined_emissions_probs = pkl.load(dem_file)
 
 # with open(raw_deltas_file, 'rb') as rdem_file:
 # 	raw_deltas = pkl.load(rdem_file)
@@ -45,36 +45,36 @@ with open(combined_emissions_file, 'rb') as dem_file:
 # 		print(np.linalg.matrix_rank(v[1]))
 	
 
-normalization_file = 'resources/normalization.pkl'
-normalization_file = 'resources/243_stripped_normalization.pkl'
+#normalization_file = 'resources/normalization.pkl'
+normalization_file = 'resources/stripped_normalization.pkl'
 with open(normalization_file, 'rb') as z_file:
 	means, stds = pkl.load(z_file)
 	metric_means = np.array(means)
 	metric_stds = np.array(stds)
 
-deltas_normalization_file = 'resources/deltas_normalization.pkl'
+# deltas_normalization_file = 'resources/deltas_normalization.pkl'
 
-with open(deltas_normalization_file, 'rb') as z_file:
-	dmeans, dstds = pkl.load(z_file)
-	delta_means = np.array(dmeans)
-	delta_stds = np.array(dstds)
+# with open(deltas_normalization_file, 'rb') as z_file:
+# 	dmeans, dstds = pkl.load(z_file)
+# 	delta_means = np.array(dmeans)
+# 	delta_stds = np.array(dstds)
 
-combined_normalization_file = 'resources/243_combined_normalization.pkl'
+# combined_normalization_file = 'resources/243_combined_normalization.pkl'
 
-with open(combined_normalization_file, 'rb') as z_file:
-	cmeans, cstds = pkl.load(z_file)
-	combined_means = np.array(cmeans)
-	combined_stds = np.array(cstds)
+# with open(combined_normalization_file, 'rb') as z_file:
+# 	cmeans, cstds = pkl.load(z_file)
+# 	combined_means = np.array(cmeans)
+# 	combined_stds = np.array(cstds)
 
 
 def metric_standardize(metric_arr):
 	return (metric_arr - metric_means) / metric_stds
 
-def delta_standardize(metric_arr):
-	return (metric_arr - delta_means) / delta_stds
+# def delta_standardize(metric_arr):
+# 	return (metric_arr - delta_means) / delta_stds
 
-def combined_standardize(combined_arr):
-	return (combined_arr - combined_means) / combined_stds
+# def combined_standardize(combined_arr):
+# 	return (combined_arr - combined_means) / combined_stds
 
 
 kde_dict = {}
@@ -88,11 +88,14 @@ for task in training_data.keys():
 
 
 def transition_fn(initial_state, resulting_state, action):
-	return 1/14
+	if np.array_equal(initial_state,resulting_state):
+		return 1-0.5
+	else:
+		return 0.5/9
 
-def deltas_transition_fn(initial_state, resulting_state, action):
-	means, cov = deltas_emissions_probs[str(list(resulting_state))]
-	return multivariate_normal.pdf(action, mean=means, cov=cov)
+# def deltas_transition_fn(initial_state, resulting_state, action):
+# 	means, cov = deltas_emissions_probs[str(list(resulting_state))]
+# 	return multivariate_normal.pdf(action, mean=means, cov=cov)
 
 # def observation_fn(observation, task, dx = 0.01):
 #     means, cov = emissions_probs[str(list(task))]
@@ -112,16 +115,16 @@ def observation_fn(observation, task, dx = 0.01):
 
 
 
-def deltas_observation_fn(observation, task):
-	means, cov = deltas_emissions_probs[str(list(task))]
-	print(task)
-	import pdb; pdb.set_trace()
-	print(np.linalg.matrix_rank(cov))
-	return multivariate_normal.pdf(observation, mean=means, cov=cov)
+# def deltas_observation_fn(observation, task):
+# 	means, cov = deltas_emissions_probs[str(list(task))]
+# 	print(task)
+# 	import pdb; pdb.set_trace()
+# 	print(np.linalg.matrix_rank(cov))
+# 	return multivariate_normal.pdf(observation, mean=means, cov=cov)
 
-def combined_observation_fn(observation, task):
-	means, cov = combined_emissions_probs[str(list(task))]
-	return multivariate_normal.pdf(observation, mean=means, cov=cov)
+# def combined_observation_fn(observation, task):
+# 	means, cov = combined_emissions_probs[str(list(task))]
+# 	return multivariate_normal.pdf(observation, mean=means, cov=cov)
 
 def construct_observation(observation, delta):
 	'''Construct an observation from metrics plus deltas
@@ -262,7 +265,7 @@ def process_task(task_trajectory,results_queue):
 			#delta = cur_metric - last_metric
 			#combined = combined_standardize(np.concatenate([cur_metric,delta]))
 			last_metric = cur_metric
-			#b_star = bfilter.prediction_step(delta)
+			#b_star = bfilter.prediction_step(cur_metric)
 			#b = bfilter.observation_step(cur_metric)
 			b = bfilter.observation_step(cur_metric)
 
