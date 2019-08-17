@@ -60,7 +60,7 @@ if __name__ == '__main__':
 	status_queue = Queue()
 	total_steps = np.sum([tup[1] for tup in task_tuples])
 	def progress_monitor():
-		for i in tqdm(range(total_steps):
+		for i in tqdm(range(total_steps)):
 			status_queue.get()
 
 	def process_task(i, task_tuple):
