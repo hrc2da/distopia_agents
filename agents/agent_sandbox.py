@@ -302,5 +302,5 @@ else:
 
 	queued_tasks = [(task, results_queue) for task in all_tasks]
 
-	with Pool(8) as pool:
+	with Pool(70) as pool:
 		results = pool.starmap(process_task, (queued_tasks))
