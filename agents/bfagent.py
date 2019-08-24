@@ -314,6 +314,7 @@ class GreedyAgent(DistopiaAgent):
             count = 0
             best_reward_this_step = []
             best_metrics_this_step = []
+            best_reward_val_this_step = float("-inf")
             for j in range(n_tries_per_step):
                 # clearing metrics and rewards to prevent case where
                 # we continue on empty neighborhood and end loop without clearing reward
@@ -337,9 +338,11 @@ class GreedyAgent(DistopiaAgent):
                     elif rewards[best_idx] > last_reward:
                         break
                     # otherwise, record this sample in case we can't find a better one
-                    else:
+                    # skip if it's worse than the best seen so far
+                    elif len(best_reward_this_step) == 0 or rewards[best_idx] > best_reward_val_this_step:
                         best_reward_this_step = rewards[:]
                         best_metrics_this_step = metrics[:]
+                        best_reward_val_this_step = rewards[best_idx]
             assert len(rewards) == len(neighborhood)
             # if we ended and didn't find something better, take the last best legal thing we saw
             # however, if there's no legal states then just reset
