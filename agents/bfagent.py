@@ -312,35 +312,55 @@ class GreedyAgent(DistopiaAgent):
                 last_reward = float("-inf")
                 self.reset(initial)
             count = 0
+            best_reward_this_step = []
+            best_metrics_this_step = []
             for j in range(n_tries_per_step):
+                # clearing metrics and rewards to prevent case where
+                # we continue on empty neighborhood and end loop without clearing reward
+                # I think this is causing the index error
+                metrics = []
+                rewards = []
                 samples += 1
                 neighborhood = self.get_sampled_neighborhood(4,2)
                 if len(neighborhood) < 1:
                     continue
-                metrics = [self.get_metrics(n, exc_logger) for n in neighborhood]
-                count += len(metrics)
-                rewards = [self.get_reward(m) for m in metrics]
-                best_idx = np.argmax(rewards)
-
-                if rewards[best_idx] == float("-inf"):
-                    no_valids += 1
-                if rewards[best_idx] > last_reward:
-                    break
-
-            # if there's no legal states then just reset
+                else:
+                    metrics = [self.get_metrics(n, exc_logger) for n in neighborhood]
+                    count += len(metrics)
+                    rewards = [self.get_reward(m) for m in metrics]
+                    best_idx = np.argmax(rewards)
+                    # if there are no legal and evaluatable moves, ignore this try
+                    if rewards[best_idx] == float("-inf"):
+                        no_valids += 1
+                    # if on the other hand there is a move that beats the last step
+                    # the first step, this is any legal move
+                    elif rewards[best_idx] > last_reward:
+                        break
+                    # otherwise, record this sample in case we can't find a better one
+                    else:
+                        best_reward_this_step = rewards[:]
+                        best_metrics_this_step = metrics[:]
+            assert len(rewards) == len(neighborhood)
+            # if we ended and didn't find something better, take the last best legal thing we saw
+            # however, if there's no legal states then just reset
             #if rewards[best_idx] <= last_reward or rewards[best_idx] == float("-inf"):
-            if rewards[best_idx] == float("-inf"):
-                last_reward = float("-inf")
+            if len(rewards) == 0 or rewards[best_idx] == float("-inf"):
+                if len(best_reward_this_step) > 0:
+                    rewards = best_reward_this_step[:]
+                    metrics = best_metrics_this_step[:]
+                    best_idx = np.argmax(rewards)
+                else:
+                    last_reward = float("-inf")
                 # if rewards[best_idx] == float("-inf"):
                 #     print("No valid moves! Resetting!")
                 # else:
                 #     print("No better move! Resetting!")
                 # what should I do here? this means there's nowhere to go that's legal
-                i -= 1 # not sure if this is right, but get the step back. will guarantee n_steps
+                    i -= 1 # not sure if this is right, but get the step back. will guarantee n_steps
                 # alternatives, restart and add an empty row, or just skip this step
-                resets += 1
-                self.reset(initial)
-                continue
+                    resets += 1
+                    self.reset(initial)
+                    continue
             if np.random.rand() < eps:
                 randoms += 1
                 # mask out the legal options
