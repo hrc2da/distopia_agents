@@ -2,10 +2,16 @@ import glob
 import re
 import pickle as pkl
 import numpy as np
+import argparse
+
+argparser = argparse.ArgumentParser(description="pickle the raw data")
+argparser.add_argument('-o','--outfile', help='the filename to print the pkl to')
+args = argparser.parse_args()
+outf_name = args.outfile
 
 data = {}
 designs = {}
-for logfile in glob.glob("resources/five_norms/normalization_log/*[0-9]_log*"):
+for logfile in glob.glob("logs/*[0-9]_log*"):
 	raw_task_str = re.search(r'[\- 0-9 \. \,]+',logfile).group()
 	
 	task_arr = list(map(float,raw_task_str.split(",")))
@@ -30,5 +36,5 @@ for logfile in glob.glob("resources/five_norms/normalization_log/*[0-9]_log*"):
 
 print(data.keys())
 print([v.shape for v in data.values()])
-with open("resources/five_norms_raw.pkl","wb+") as outfile:
+with open("resources/{}".format(outf_name),"wb+") as outfile:
 	pkl.dump((data,designs),outfile)

@@ -1,5 +1,6 @@
 import pickle as pkl
 import numpy as np
+import argparse
 
 def is_reset(old_design, new_design):
 	'''Detect if there is more than one difference between designs
@@ -70,6 +71,11 @@ def get_combined_no_resets(data,designs):
 
 filename = 'resources/one_hot_raw.pkl'
 filename = 'resources/five_norms_raw.pkl'
+parser = argparse.ArgumentParser("parse a globbed pickle")
+parser.add_argument('-f','--file', help='the input file')
+
+args = parser.parse_args()
+filename = args.file
 
 with open(filename, 'rb') as infile:
 	data,designs = pkl.load(infile)
@@ -91,4 +97,4 @@ metric_emissions = {str(eval(task)[:5]): (np.mean(c[:,:5],0),np.cov(c[:,:5].T)) 
 with open('resources/stripped_emissions.pkl', 'wb+') as outfile:
 	pkl.dump(metric_emissions,outfile)
 with open('resources/stripped_normalization.pkl', 'wb+') as outfile:
-	pkl.dump((pop_mean[:5],pop_std[:5]),outfile)
+	pkl.dump((pop_mean[:len(pop_mean)//2],pop_std[:len(pop_std)//2]),outfile)
